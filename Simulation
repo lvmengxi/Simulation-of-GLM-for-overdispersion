@@ -1,0 +1,197 @@
+#install.packages("lme4")
+library(lme4)
+library(lmerTest)
+library(car)
+library(optimx)
+
+# fit the model by glmer with overdispersion
+# initiate a empty data frame
+result=as.data.frame(t(c(1,1,1,1)))
+result
+
+for (i in 1:1000){
+  set.seed(i)
+  print(i)
+  tryCatch({
+    B=rep(rnorm(10,0,sqrt(3)),each=9)
+    #plot(B)
+    TrtA=rep(log(0.9/0.1, base = exp(1)),3)
+    TrtB=rep(log(0.25/0.75, base = exp(1)),3)
+    TrtC=rep(log(0.9/0.1, base = exp(1)),3)
+    Trt=rep(c(TrtA,TrtB,TrtC),10)
+    #plot(Trt)
+    Trt_B=rep(rnorm(30,0,sqrt(2)),each=3)
+    #plot(Trt_B)
+    
+    alpha=B+Trt+Trt_B
+    #plot(alpha)
+    
+    tol=1/(1+exp(-alpha))
+    #plot(tol)
+    y=lapply(tol,function(x) rbinom(1,20,x)/20)
+    #plot(dat$Y,col=dat$treatment)
+
+    
+    dat=as.data.frame(x=cbind(rep(c(1:10),each=9),rep(c("A","B","C"),each=3,times=10),as.numeric(y)))
+    dat$size=20
+    dat$obs=seq(1:90)
+    colnames(dat)=c("block","treatment","Y","size","obs")
+    dat$Y=as.numeric(as.character(dat$Y))
+    
+    mold <- glmer(Y ~ treatment + (1|block)+(1|block:treatment)+(1|obs), family=binomial(link=logit), weights =  size,
+                  data = dat)
+    
+    #summary(mold)
+    temp=c(coef(summary(mold))[, "Pr(>|z|)"],AIC(logLik(mold)))
+    result=rbind(result,temp)
+    
+  },error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+  }
+
+
+# fit the model by glmer WITHOUT overdispersion
+# initiate a empty data frame
+resultno=as.data.frame(t(c(1,1,1,1)))
+resultno
+
+for (i in 1:1000){
+  set.seed(i)
+  print(i)
+  tryCatch({
+    B=rep(rnorm(10,0,sqrt(3)),each=9)
+    #plot(B)
+    TrtA=rep(log(0.9/0.1, base = exp(1)),3)
+    TrtB=rep(log(0.25/0.75, base = exp(1)),3)
+    TrtC=rep(log(0.9/0.1, base = exp(1)),3)
+    Trt=rep(c(TrtA,TrtB,TrtC),10)
+    #plot(Trt)
+    Trt_B=rep(rnorm(30,0,sqrt(2)),each=3)
+    #plot(Trt_B)
+    
+    alpha=B+Trt+Trt_B
+    #plot(alpha)
+    
+    tol=1/(1+exp(-alpha))
+    #plot(tol)
+    y=lapply(tol,function(x) rbinom(1,20,x)/20)
+    #plot(dat$Y,col=dat$treatment)
+    
+    
+    dat=as.data.frame(x=cbind(rep(c(1:10),each=9),rep(c("A","B","C"),each=3,times=10),as.numeric(y)))
+    dat$size=20
+    dat$obs=seq(1:90)
+    colnames(dat)=c("block","treatment","Y","size","obs")
+    dat$Y=as.numeric(as.character(dat$Y))
+    
+    mold <- glmer(Y ~ treatment + (1|block)+(1|block:treatment), family=binomial(link=logit), weights =  size,
+                  data = dat)
+    
+    #summary(mold)
+    temp=c(coef(summary(mold))[, "Pr(>|z|)"],AIC(logLik(mold)))
+    resultno=rbind(resultno,temp)
+  },error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+}
+
+#false positive rate
+sum(resultno$V2 [-1]< 0.0005)  #power
+sum(resultno$V3[-1] < 0.0005)     #FPR
+
+sum(result$V2 [-1]< 0.0005)  #power
+sum(result$V3[-1] < 0.0005)     #FPR
+
+
+#P value
+mean(resultno$V2[-1])  # A vs B
+mean(result$V2[-1])
+
+mean(resultno$V3[-1])   # A vs C
+mean(result$V3[-1])
+
+mean(resultno$V4[-1])  # A vs B
+mean(result$V4[-1])
+
+write.csv(resultno,"GLM-resultno-g.csv")
+
+plot(resultno$V2[-1],type="p",col="red",xlim = range(1:100),ylim = c(0,0.001),pch = 19,cex=0.01)
+points(result$V2[-1],col="green",xlim = range(1:100),ylim = c(0,0.001),pch = 19,cex=0.01)
+
+
+
+######estiamte system time for glmer WITH overdispersion
+
+system.time(for (i in 1:1000){
+  set.seed(i)
+  print(i)
+  tryCatch({
+    B=rep(rnorm(10,0,sqrt(3)),each=9)
+    #plot(B)
+    TrtA=rep(log(0.9/0.1, base = exp(1)),3)
+    TrtB=rep(log(0.25/0.75, base = exp(1)),3)
+    TrtC=rep(log(0.9/0.1, base = exp(1)),3)
+    Trt=rep(c(TrtA,TrtB,TrtC),10)
+    #plot(Trt)
+    Trt_B=rep(rnorm(30,0,sqrt(2)),each=3)
+    #plot(Trt_B)
+    
+    alpha=B+Trt+Trt_B
+    #plot(alpha)
+    
+    tol=1/(1+exp(-alpha))
+    #plot(tol)
+    y=lapply(tol,function(x) rbinom(1,20,x)/20)
+    #plot(dat$Y,col=dat$treatment)
+    
+    
+    dat=as.data.frame(x=cbind(rep(c(1:10),each=9),rep(c("A","B","C"),each=3,times=10),as.numeric(y)))
+    dat$size=20
+    dat$obs=seq(1:90)
+    colnames(dat)=c("block","treatment","Y","size","obs")
+    dat$Y=as.numeric(as.character(dat$Y))
+    
+    mold <- glmer(Y ~ treatment + (1|block)+(1|block:treatment)+(1|obs), family=binomial(link=logit), weights =  size,
+                  data = dat)
+    
+    summary(mold)
+    temp=coef(summary(mold))[, "Pr(>|z|)"]
+    result=rbind(result,temp)
+  },error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+})
+
+######estiamte system time for glmer WITHOUT overdispersion
+system.time(for (i in 1:1000){
+  set.seed(i)
+  print(i)
+  tryCatch({
+    B=rep(rnorm(10,0,sqrt(3)),each=9)
+    #plot(B)
+    TrtA=rep(log(0.9/0.1, base = exp(1)),3)
+    TrtB=rep(log(0.25/0.75, base = exp(1)),3)
+    TrtC=rep(log(0.9/0.1, base = exp(1)),3)
+    Trt=rep(c(TrtA,TrtB,TrtC),10)
+    #plot(Trt)
+    Trt_B=rep(rnorm(30,0,sqrt(2)),each=3)
+    #plot(Trt_B)
+    
+    alpha=B+Trt+Trt_B
+    #plot(alpha)
+    
+    tol=1/(1+exp(-alpha))
+    #plot(tol)
+    y=lapply(tol,function(x) rbinom(1,20,x)/20)
+    #plot(dat$Y,col=dat$treatment)
+    
+    
+    dat=as.data.frame(x=cbind(rep(c(1:10),each=9),rep(c("A","B","C"),each=3,times=10),as.numeric(y)))
+    dat$size=20
+    dat$obs=seq(1:90)
+    colnames(dat)=c("block","treatment","Y","size","obs")
+    dat$Y=as.numeric(as.character(dat$Y))
+    
+    mold <- glmer(Y ~ treatment + (1|block)+(1|block:treatment), family=binomial(link=logit), weights =  size,
+                  data = dat)
+    
+    summary(mold)
+    temp=coef(summary(mold))[, "Pr(>|z|)"]
+    resultno=rbind(resultno,temp)
+  },error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+})
